@@ -95,6 +95,9 @@ override LDFLAGS += \
     --gc-sections \
     -T linker.lds
 
+# Limine host tool (built natively on this machine).
+LIMINE_TOOL := limine/limine
+
 # Use "find" to glob all *.c, *.S, and *.asm files in the tree and obtain the
 # object and header dependency file names.
 override SRCFILES := $(shell find -L src -type f 2>/dev/null | LC_ALL=C sort)
@@ -135,3 +138,55 @@ obj/%.asm.o: %.asm GNUmakefile
 .PHONY: clean
 clean:
 	rm -rf bin obj
+
+
+# Build the host Limine utility when needed.
+$(LIMINE_TOOL): limine/limine.c limine/Makefile
+	$(MAKE) -C limine
+
+# Create a bootable ISO image with Limine bootloader.
+bin/$(OUTPUT).iso: bin/$(OUTPUT) $(LIMINE_TOOL)
+	mkdir -p iso_root/boot
+	cp bin/$(OUTPUT) iso_root/boot/
+	cp limine.conf iso_root/
+	cp limine/limine-bios.sys iso_root/
+	cp limine/limine-bios-cd.bin iso_root/
+	cp limine/limine-uefi-cd.bin iso_root/
+	mkdir -p iso_root/EFI/BOOT
+	cp limine/BOOTX64.EFI iso_root/EFI/BOOT/
+	xorrisofs -R -J -b limine-bios-cd.bin -c boot.cat \
+	    -no-emul-boot -boot-load-size 4 \
+	    -eltorito-alt-boot -e limine-uefi-cd.bin -no-emul-boot \
+	    -isohybrid-gpt-basdat \
+	    -o bin/$(OUTPUT).iso iso_root
+	# Install Limine bootloader into the ISO.
+	$(LIMINE_TOOL) bios-install bin/$(OUTPUT).iso
+	rm -rf iso_root
+# Run the OS in QEMU.
+.PHONY: run
+run: bin/$(OUTPUT).iso
+	@if [ -n "$$DISPLAY" ] || [ -n "$$WAYLAND_DISPLAY" ]; then \
+	    qemu-system-x86_64 -boot order=d -cdrom bin/$(OUTPUT).iso -m 512M; \
+	else \
+	    echo "No GUI display detected; using headless mode (serial in terminal)."; \
+	    qemu-system-x86_64 -boot order=d -cdrom bin/$(OUTPUT).iso -m 512M -display none -serial stdio -monitor none; \
+	fi
+
+# Run the OS in QEMU in terminal/headless mode.
+.PHONY: run-headless
+run-headless: bin/$(OUTPUT).iso
+	qemu-system-x86_64 -boot order=d -cdrom bin/$(OUTPUT).iso -m 512M -display none -serial stdio -monitor none
+
+# Run the OS in QEMU with KVM acceleration.
+.PHONY: run-kvm
+run-kvm: bin/$(OUTPUT).iso
+	@if [ -n "$$DISPLAY" ] || [ -n "$$WAYLAND_DISPLAY" ]; then \
+	    qemu-system-x86_64 -boot order=d -cdrom bin/$(OUTPUT).iso -m 512M -enable-kvm -cpu host; \
+	else \
+	    echo "No GUI display detected; using headless mode (serial in terminal)."; \
+	    qemu-system-x86_64 -boot order=d -cdrom bin/$(OUTPUT).iso -m 512M -enable-kvm -cpu host -display none -serial stdio -monitor none; \
+	fi
+
+# Phony target for image creation.
+.PHONY: image
+image: bin/$(OUTPUT).iso

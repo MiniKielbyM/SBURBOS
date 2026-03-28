@@ -87,6 +87,42 @@ int memcmp(const void *s1, const void *s2, size_t n) {
     return 0;
 }
 
+static inline void outb(uint16_t port, uint8_t value) {
+    asm volatile ("outb %0, %1" : : "a"(value), "Nd"(port));
+}
+
+static inline uint8_t inb(uint16_t port) {
+    uint8_t value;
+    asm volatile ("inb %1, %0" : "=a"(value) : "Nd"(port));
+    return value;
+}
+
+static void serial_init(void) {
+    // Configure COM1 (0x3F8) for 115200 8N1.
+    outb(0x3F8 + 1, 0x00); // Disable interrupts.
+    outb(0x3F8 + 3, 0x80); // Enable DLAB.
+    outb(0x3F8 + 0, 0x01); // Divisor low byte (115200 baud).
+    outb(0x3F8 + 1, 0x00); // Divisor high byte.
+    outb(0x3F8 + 3, 0x03); // 8 bits, no parity, one stop bit.
+    outb(0x3F8 + 2, 0xC7); // Enable FIFO, clear, 14-byte threshold.
+    outb(0x3F8 + 4, 0x0B); // IRQs enabled, RTS/DSR set.
+}
+
+static void serial_write_char(char c) {
+    while ((inb(0x3F8 + 5) & 0x20) == 0) {
+    }
+    outb(0x3F8, (uint8_t)c);
+}
+
+static void serial_write(const char *s) {
+    while (*s != '\0') {
+        if (*s == '\n') {
+            serial_write_char('\r');
+        }
+        serial_write_char(*s++);
+    }
+}
+
 // Halt and catch fire function.
 static void hcf(void) {
     for (;;) {
@@ -98,16 +134,25 @@ static void hcf(void) {
 // If renaming kmain() to something else, make sure to change the
 // linker script accordingly.
 void kmain(void) {
+    serial_init();
+    serial_write("[myos] kernel entered kmain()\n");
+
     // Ensure the bootloader actually understands our base revision (see spec).
     if (LIMINE_BASE_REVISION_SUPPORTED(limine_base_revision) == false) {
+        serial_write("[myos] Limine base revision unsupported\n");
         hcf();
     }
+
+    serial_write("[myos] Limine base revision supported\n");
 
     // Ensure we got a framebuffer.
     if (framebuffer_request.response == NULL
      || framebuffer_request.response->framebuffer_count < 1) {
+        serial_write("[myos] no framebuffer received\n");
         hcf();
     }
+
+    serial_write("[myos] framebuffer received\n");
 
     // Fetch the first framebuffer.
     struct limine_framebuffer *framebuffer = framebuffer_request.response->framebuffers[0];
@@ -117,6 +162,8 @@ void kmain(void) {
         volatile uint32_t *fb_ptr = framebuffer->address;
         fb_ptr[i * (framebuffer->pitch / 4) + i] = 0xffffff;
     }
+
+    serial_write("[myos] drew test pixels, halting\n");
 
     // We're done, just hang...
     hcf();
