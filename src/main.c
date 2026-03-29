@@ -152,12 +152,25 @@ void kmain(void) {
     // Fetch the first framebuffer.
     struct limine_framebuffer *framebuffer = framebuffer_request.response->framebuffers[0];
 
-    // Note: we assume the framebuffer model is RGB with 32-bit pixels.
-    for (size_t i = 0; i < framebuffer->width * framebuffer->height; i++) {
-        volatile uint32_t *fb_ptr = framebuffer->address;
-        fb_ptr[i * (framebuffer->pitch / 4) + i] = 0xffffff;
+    // Simple 8x8 monospace font bitmap for ASCII character 'A'
+    uint8_t font_bitmap[] = {
+        0x18, 0x3C, 0x66, 0x7E, 0x66, 0x66, 0x66, 0x00
+    };
+
+    uint32_t *fb_ptr = (uint32_t *)framebuffer->address;
+    uint32_t pitch = framebuffer->pitch / sizeof(uint32_t);
+    uint32_t white = 0xFFFFFFFF;
+
+    // Draw character at position (10, 10)
+    int x = 10, y = 10;
+    for (int row = 0; row < 8; row++) {
+        uint8_t byte = font_bitmap[row];
+        for (int col = 0; col < 8; col++) {
+            if (byte & (0x80 >> col)) {
+                fb_ptr[(y + row) * pitch + (x + col)] = white;
+            }
+        }
     }
-    
     serial_write("[myos] drew test pixels, halting\n");
 
     // We're done, just hang...
