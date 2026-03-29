@@ -5,13 +5,14 @@ _start:
     # Disable interrupts
     cli
     
-    # Set up stack
-    lea stack_top(%rip), %rsp
+    # Set up stack using absolute address
+    mov $stack_top, %rsp
     
     # Align stack to 16-byte boundary (required by System V ABI)
     and $-16, %rsp
+    sub $8, %rsp  # Account for return address
     
-    # Call _start_c which will set up everything else
+    # Call C entry point
     call kmain
     
     # Should not return, but halt if it does
@@ -24,3 +25,4 @@ _start:
 stack_bottom:
     .space 65536  # 64 KB stack
 stack_top:
+
