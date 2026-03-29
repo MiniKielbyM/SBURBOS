@@ -116,7 +116,7 @@ all: bin/$(OUTPUT)
 init-limine:
 	git submodule sync --recursive
 	git submodule update --init --recursive
-	cd limine && git fetch origin v11.x-binary && git checkout v11.x-binary && cd ..
+	cd limine && git fetch origin v8.x-binary && git checkout v8.x-binary && cd ..
 
 # Include header dependencies.
 -include $(HEADER_DEPS)
@@ -173,25 +173,25 @@ bin/$(OUTPUT).iso: bin/$(OUTPUT) $(LIMINE_TOOL)
 .PHONY: run
 run: bin/$(OUTPUT).iso
 	@if [ -n "$$DISPLAY" ] || [ -n "$$WAYLAND_DISPLAY" ]; then \
-	    qemu-system-x86_64 -boot order=d -cdrom bin/$(OUTPUT).iso -m 512M; \
+	    qemu-system-x86_64 -boot order=d -cdrom bin/$(OUTPUT).iso -m 512M -bios /usr/share/ovmf/OVMF.fd; \
 	else \
 	    echo "No GUI display detected; using headless mode (serial in terminal)."; \
-	    qemu-system-x86_64 -boot order=d -cdrom bin/$(OUTPUT).iso -m 512M -display none -serial stdio -monitor none; \
+	    qemu-system-x86_64 -boot order=d -cdrom bin/$(OUTPUT).iso -m 512M -bios /usr/share/ovmf/OVMF.fd -display none -serial stdio -monitor none; \
 	fi
 
 # Run the OS in QEMU in terminal/headless mode.
 .PHONY: run-headless
 run-headless: bin/$(OUTPUT).iso
-	qemu-system-x86_64 -boot order=d -cdrom bin/$(OUTPUT).iso -m 512M -display none -serial stdio -monitor none
+	qemu-system-x86_64 -boot order=d -cdrom bin/$(OUTPUT).iso -m 512M -bios /usr/share/ovmf/OVMF.fd -display none -serial stdio -monitor none
 
 # Run the OS in QEMU with KVM acceleration.
 .PHONY: run-kvm
 run-kvm: bin/$(OUTPUT).iso
 	@if [ -n "$$DISPLAY" ] || [ -n "$$WAYLAND_DISPLAY" ]; then \
-	    qemu-system-x86_64 -boot order=d -cdrom bin/$(OUTPUT).iso -m 512M -enable-kvm -cpu host; \
+	    qemu-system-x86_64 -boot order=d -cdrom bin/$(OUTPUT).iso -m 512M -bios /usr/share/ovmf/OVMF.fd -enable-kvm -cpu host; \
 	else \
 	    echo "No GUI display detected; using headless mode (serial in terminal)."; \
-	    qemu-system-x86_64 -boot order=d -cdrom bin/$(OUTPUT).iso -m 512M -enable-kvm -cpu host -display none -serial stdio -monitor none; \
+	    qemu-system-x86_64 -boot order=d -cdrom bin/$(OUTPUT).iso -m 512M -bios /usr/share/ovmf/OVMF.fd -enable-kvm -cpu host -display none -serial stdio -monitor none; \
 	fi
 
 # Phony target for image creation.
