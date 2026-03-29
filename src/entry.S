@@ -2,8 +2,8 @@
 
 .global _start
 _start:
-    # Set up stack pointer
-    mov $stack_top, %rsp
+    # Set up stack pointer with RIP-relative addressing
+    lea stack_top(%rip), %rsp
     
     # Align stack to 16 bytes as required by x86-64 ABI
     and $-16, %rsp
@@ -14,10 +14,10 @@ _start:
     # Halt if kmain returns
     cli
     hlt
-    jmp .
+    jmp _start
 
 .section .bss
-.align 16
+.align 4096
 stack_bottom:
-    .space 16384  # 16 KB stack
+    .space 32768  # 32 KB stack
 stack_top:
