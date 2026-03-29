@@ -153,11 +153,11 @@ void kmain(void) {
     struct limine_framebuffer *framebuffer = framebuffer_request.response->framebuffers[0];
 
     // Note: we assume the framebuffer model is RGB with 32-bit pixels.
-    for (size_t i = 0; i < 100; i++) {
+    for (size_t i = 0; i < framebuffer->width * framebuffer->height; i++) {
         volatile uint32_t *fb_ptr = framebuffer->address;
         fb_ptr[i * (framebuffer->pitch / 4) + i] = 0xffffff;
     }
-
+    
     serial_write("[myos] drew test pixels, halting\n");
 
     // We're done, just hang...
