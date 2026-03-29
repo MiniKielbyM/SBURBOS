@@ -127,8 +127,8 @@ static void hcf(void) {
     }
 }
 
-// Entry point - Limine will call this directly
-void _start(void) {
+// Entry point - called from assembly
+void kmain(void) {
     serial_init();
     serial_write("[myos] kernel entered _start()\n");
 
