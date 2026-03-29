@@ -3,9 +3,9 @@
 #include <stdbool.h>
 #include <limine.h>
 
-// Set the base revision to 4 for compatibility with Limine v8.x
+// Set the base revision to 3 for compatibility with Limine v8.x
 __attribute__((used, section(".limine_requests")))
-static volatile uint64_t limine_base_revision[] = LIMINE_BASE_REVISION(4);
+static volatile uint64_t limine_base_revision[] = LIMINE_BASE_REVISION(3);
 
 // The Limine requests can be placed anywhere, but it is important that
 // the compiler does not optimise them away, so, usually, they should
