@@ -111,6 +111,13 @@ override HEADER_DEPS := $(addprefix obj/,$(CFILES:.c=.c.d) $(ASFILES:.S=.S.d))
 .PHONY: all
 all: bin/$(OUTPUT)
 
+# Initialize Limine submodule.
+.PHONY: init-limine
+init-limine:
+	git submodule sync --recursive
+	git submodule update --init --recursive
+	cd limine && git fetch origin v11.x-binary && git checkout v11.x-binary && cd ..
+
 # Include header dependencies.
 -include $(HEADER_DEPS)
 
