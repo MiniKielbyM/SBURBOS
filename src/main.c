@@ -3,6 +3,14 @@
 #include <stdbool.h>
 #include <limine.h>
 
+
+// base system fontset
+uint8_t font[95][8] = {
+    {0, 0, 0, 0, 0, 0, 0, 0}, // SP
+    {0, 40, 40, 40, 40, 0, 40, 0}, // !
+    {0, 28, 28, 14, 0, 0, 0, 0}
+};
+
 // Set the base revision to 3 for compatibility with Limine v8.x
 __attribute__((used, section(".limine_requests")))
 static volatile uint64_t limine_base_revision[] = LIMINE_BASE_REVISION(3);
@@ -152,11 +160,6 @@ void kmain(void) {
     // Fetch the first framebuffer.
     struct limine_framebuffer *framebuffer = framebuffer_request.response->framebuffers[0];
 
-    // Simple 8x8 monospace font bitmap for ASCII character 'A'
-    uint8_t font_bitmap[] = {
-        0x18, 0x3C, 0x66, 0x7E, 0x66, 0x66, 0x66, 0x00
-    };
-
     uint32_t *fb_ptr = (uint32_t *)framebuffer->address;
     uint32_t pitch = framebuffer->pitch / sizeof(uint32_t);
     uint32_t white = 0xFFFFFFFF;
@@ -164,7 +167,7 @@ void kmain(void) {
     // Draw character at position (10, 10)
     int x = 10, y = 10;
     for (int row = 0; row < 8; row++) {
-        uint8_t byte = font_bitmap[row];
+        uint8_t byte = font[1][row];
         for (int col = 0; col < 8; col++) {
             if (byte & (0x80 >> col)) {
                 fb_ptr[(y + row) * pitch + (x + col)] = white;
