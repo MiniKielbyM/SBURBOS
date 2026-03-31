@@ -8,7 +8,7 @@
 uint8_t font[95][8] = {
     {0, 0, 0, 0, 0, 0, 0, 0}, // SP
     {0, 40, 40, 40, 40, 0, 40, 0}, // !
-    {0, 28, 28, 14, 0, 0, 0, 0}
+    {0, 28, 28, 14, 0, 0, 0, 0} // "
 };
 
 // Set the base revision to 3 for compatibility with Limine v8.x
@@ -167,7 +167,7 @@ void kmain(void) {
     // Draw character at position (10, 10)
     int x = 10, y = 10;
     for (int row = 0; row < 8; row++) {
-        uint8_t byte = font[1][row];
+        uint8_t byte = font[0][row];
         for (int col = 0; col < 8; col++) {
             if (byte & (0x80 >> col)) {
                 fb_ptr[(y + row) * pitch + (x + col)] = white;
