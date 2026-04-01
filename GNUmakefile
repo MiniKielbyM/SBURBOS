@@ -3,7 +3,7 @@
 
 # This is the name that our final executable will have.
 # Change as needed.
-override OUTPUT := myos
+override OUTPUT := SBURBOS
 
 # User controllable toolchain and toolchain prefix.
 TOOLCHAIN :=
