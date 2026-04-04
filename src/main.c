@@ -407,6 +407,13 @@ unsigned char font_psf[] = {
     0xa0, 0x00, 0xff, 0xff};
 unsigned int Cyr_a8x14_psf_len = 4684;
 
+char scancode_map[128] = {
+    0, 27, '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '=', '\b',
+    '\t', 'q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', '[', ']', '\n',
+    0, 'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', ';', '\'', '`',
+    0, '\\', 'z', 'x', 'c', 'v', 'b', 'n', 'm', ',', '.', '/',
+    0, '*', 0, ' '};
+
 // internal pointers
 static PSF1_Header *psf = (PSF1_Header *)font_psf;
 static uint8_t *glyphs = (uint8_t *)font_psf + sizeof(PSF1_Header);
@@ -494,9 +501,9 @@ static inline void outb(uint16_t port, uint8_t value)
 
 static inline uint8_t inb(uint16_t port)
 {
-    uint8_t value;
-    asm volatile("inb %1, %0" : "=a"(value) : "Nd"(port));
-    return value;
+    uint8_t ret;
+    __asm__ volatile("inb %1, %0" : "=a"(ret) : "Nd"(port));
+    return ret;
 }
 
 // Serial
@@ -551,7 +558,7 @@ static void print(char string[])
         if (string[i] == '\n')
         {
             x = 10;
-            y += psf_get_height();
+            y += 16;
             continue;
         }
 
@@ -588,7 +595,7 @@ static void println(char string[])
         if (string[i] == '\n')
         {
             x = 10;
-            y += psf_get_height();
+            y += 16;
             continue;
         }
 
@@ -611,6 +618,46 @@ static void println(char string[])
     }
     y += 16;
     x = 10;
+}
+
+static void delete_last_char()
+{
+    if (x > 10)
+    {
+        x -= 8;
+    }
+    else if (y > 10)
+    {
+        y -= 16;
+        x = 10 + ((framebuffer_request.response->framebuffers[0]->width / 8) - 1) * 8;
+    }
+    else
+    {
+        return; // at the beginning of the screen, nothing to delete
+    }
+
+    struct limine_framebuffer *framebuffer =
+        framebuffer_request.response->framebuffers[0];
+    uint32_t *fb_ptr = (uint32_t *)framebuffer->address;
+    uint32_t pitch = framebuffer->pitch / sizeof(uint32_t);
+
+    for (int row = 0; row < 16; row++)
+    {
+        for (int col = 0; col < 8; col++)
+        {
+            fb_ptr[(y + row) * pitch + (x + col)] = 0; // clear to black
+        }
+    }
+}
+
+bool keyboard_has_data()
+{
+    return inb(0x64) & 1; // output buffer full
+}
+
+uint8_t keyboard_read()
+{
+    return inb(0x60);
 }
 
 // Entry point
@@ -636,11 +683,37 @@ void kmain(void)
 
     serial_write("[SBURBOS] framebuffer received\n");
 
-    println("SBURBOS");
-    println("");
+    println("SBURBOS\n");
     println("Hello world!");
+    __asm__ volatile("cli");
 
-
+    while (1)
+    {
+        if (keyboard_has_data())
+        {
+            uint8_t sc = keyboard_read();
+            if (!(sc & 0x80))
+            {
+                char c = scancode_map[sc];
+                if (c == '\b')
+                {
+                    delete_last_char();
+                }
+                else
+                {
+                    if (c == 0)
+                    {
+                        println("");
+                        print("[SBURBOS] unknown key pressed");
+                    }
+                    else
+                    {
+                        print((char[]){c, '\0'});
+                    }
+                }
+            }
+        }
+    }
     serial_write("[SBURBOS] drew text, halting\n");
 
     hcf();
