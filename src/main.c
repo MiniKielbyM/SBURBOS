@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <limine.h>
 #include <string.h>
+#include "image.h"
 
 typedef struct
 {
@@ -11,6 +12,16 @@ typedef struct
     uint8_t mode;
     uint8_t charsize; // bytes per glyph
 } PSF1_Header;
+
+typedef struct
+{
+    uint32_t width;
+    uint32_t height;
+    uint32_t *data; // 0xAARRGGBB
+} Image;
+
+#define LOGO_WIDTH 960
+#define LOGO_HEIGHT 1017
 
 // from xxd -i
 unsigned char font_psf[] = {
@@ -660,9 +671,84 @@ uint8_t keyboard_read()
     return inb(0x60);
 }
 
+static void startup_animation()
+{
+    struct limine_framebuffer *framebuffer =
+        framebuffer_request.response->framebuffers[0];
+
+    uint32_t *fb_ptr = (uint32_t *)framebuffer->address;
+    uint32_t pitch = framebuffer->pitch / sizeof(uint32_t);
+    uint32_t white = 0xFFFFFFFF;
+}
+
+static void clear_screen()
+{
+    struct limine_framebuffer *framebuffer =
+        framebuffer_request.response->framebuffers[0];
+
+    uint32_t *fb_ptr = (uint32_t *)framebuffer->address;
+    uint32_t pitch = framebuffer->pitch / sizeof(uint32_t);
+
+    for (uint32_t y = 0; y < framebuffer->height; y++)
+    {
+        for (uint32_t x = 0; x < framebuffer->width; x++)
+        {
+            fb_ptr[y * pitch + x] = 0; // clear to black
+        }
+    }
+    y = 10;
+    x = 10;
+}
+
+void put_pixel(uint32_t *fb, uint64_t pitch, int x, int y, uint32_t color)
+{
+    uint32_t *row = (uint32_t *)((uint8_t *)fb + y * pitch);
+    row[x] = color;
+}
+
+void draw_image(uint32_t *fb, uint64_t pitch, Image *img, int x_off, int y_off)
+{
+    for (uint32_t y = 0; y < img->height; y++)
+    {
+        for (uint32_t x = 0; x < img->width; x++)
+        {
+            uint32_t color = img->data[y * img->width + x];
+
+            uint32_t *row = (uint32_t *)((uint8_t *)fb + (y + y_off) * pitch);
+            row[x + x_off] = color;
+        }
+    }
+}
+
+void draw_image_fit(uint32_t *fb, uint64_t pitch, Image *img, uint32_t fb_width, uint32_t fb_height) {
+    for (uint32_t y = 0; y < fb_height; y++) {
+        // map framebuffer y to image y
+        uint32_t src_y = y * img->height / fb_height;
+
+        uint32_t *row = (uint32_t *)((uint8_t *)fb + y * pitch);
+
+        for (uint32_t x = 0; x < fb_width; x++) {
+            // map framebuffer x to image x
+            uint32_t src_x = x * img->width / fb_width;
+
+            row[x] = img->data[src_y * img->width + src_x];
+        }
+    }
+}
+
+static void delay(int ms)
+{
+    int cpu_hz = get_cpu_hrz();
+    int cycles = (cpu_hz / 1000) * ms;
+    for (int i = 0; i < cycles; i++)
+        asm volatile("nop");
+}
+
 // Entry point
 void kmain(void)
 {
+
+
     serial_init();
     serial_write("[SBURBOS] kernel entered _start()\n");
 
@@ -680,11 +766,19 @@ void kmain(void)
         serial_write("[SBURBOS] no framebuffer received\n");
         hcf();
     }
-
+    struct limine_framebuffer *fb = framebuffer_request.response->framebuffers[0];
+    uint32_t *framebuffer = fb->address;
+    uint64_t pitch = fb->pitch;
     serial_write("[SBURBOS] framebuffer received\n");
 
-    println("SBURBOS\n");
-    println("Hello world!");
+    Image img = {
+        .width = LOGO_WIDTH,
+        .height = LOGO_HEIGHT,
+        .data = (uint32_t *)output_rgba};
+
+    // draw it at top-left corner (0,0)
+    draw_image_fit(framebuffer, pitch, &img, fb->width/2, fb->height/2);
+
     __asm__ volatile("cli");
 
     while (1)
@@ -699,12 +793,17 @@ void kmain(void)
                 {
                     delete_last_char();
                 }
+                else if (c == '\t')
+                {
+                    print("    ");
+                }
+
                 else
                 {
                     if (c == 0)
                     {
                         println("");
-                        print("[SBURBOS] unknown key pressed");
+                        print((char[]){'[', '0' + (sc >> 4), '0' + (sc & 0xF), ']', '\0'});
                     }
                     else
                     {

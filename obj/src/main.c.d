@@ -1,2 +1,3 @@
-obj/src/main.c.o: src/main.c src/limine.h
+obj/src/main.c.o: src/main.c src/limine.h src/image.h
 src/limine.h:
+src/image.h:
