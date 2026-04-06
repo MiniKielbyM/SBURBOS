@@ -720,14 +720,17 @@ void draw_image(uint32_t *fb, uint64_t pitch, Image *img, int x_off, int y_off)
     }
 }
 
-void draw_image_fit(uint32_t *fb, uint64_t pitch, Image *img, uint32_t fb_width, uint32_t fb_height) {
-    for (uint32_t y = 0; y < fb_height; y++) {
+void draw_image_fit(uint32_t *fb, uint64_t pitch, Image *img, uint32_t fb_width, uint32_t fb_height)
+{
+    for (uint32_t y = 0; y < fb_height; y++)
+    {
         // map framebuffer y to image y
         uint32_t src_y = y * img->height / fb_height;
 
         uint32_t *row = (uint32_t *)((uint8_t *)fb + y * pitch);
 
-        for (uint32_t x = 0; x < fb_width; x++) {
+        for (uint32_t x = 0; x < fb_width; x++)
+        {
             // map framebuffer x to image x
             uint32_t src_x = x * img->width / fb_width;
 
@@ -736,19 +739,33 @@ void draw_image_fit(uint32_t *fb, uint64_t pitch, Image *img, uint32_t fb_width,
     }
 }
 
-static void delay(int ms)
+void draw_image_fit_center(uint32_t *fb, uint64_t pitch, Image *img, uint32_t fb_width, uint32_t fb_height, uint32_t scale_percent)
 {
-    int cpu_hz = get_cpu_hrz();
-    int cycles = (cpu_hz / 1000) * ms;
-    for (int i = 0; i < cycles; i++)
-        asm volatile("nop");
+    // compute scaled dimensions using integer math
+    uint32_t scaled_width = fb_width * scale_percent / 100;
+    uint32_t scaled_height = fb_height * scale_percent / 100;
+
+    // offsets to center the scaled image
+    int x_off = (fb_width - scaled_width) / 2;
+    int y_off = (fb_height - scaled_height) / 2;
+
+    for (uint32_t y = 0; y < scaled_height; y++)
+    {
+        uint32_t src_y = y * img->height / scaled_height;
+        uint32_t *row = (uint32_t *)((uint8_t *)fb + (y + y_off) * pitch);
+
+        for (uint32_t x = 0; x < scaled_width; x++)
+        {
+            uint32_t src_x = x * img->width / scaled_width;
+            row[x + x_off] = img->data[src_y * img->width + src_x];
+        }
+    }
 }
 
 // Entry point
 void kmain(void)
 {
-
-
+    bool show_animation = true;
     serial_init();
     serial_write("[SBURBOS] kernel entered _start()\n");
 
@@ -776,14 +793,13 @@ void kmain(void)
         .height = LOGO_HEIGHT,
         .data = (uint32_t *)output_rgba};
 
-    // draw it at top-left corner (0,0)
-    draw_image_fit(framebuffer, pitch, &img, fb->width/2, fb->height/2);
+    draw_image_fit_center(framebuffer, pitch, &img, fb->width, fb->height, 50);
 
     __asm__ volatile("cli");
 
     while (1)
     {
-        if (keyboard_has_data())
+        if (keyboard_has_data() && !show_animation)
         {
             uint8_t sc = keyboard_read();
             if (!(sc & 0x80))
