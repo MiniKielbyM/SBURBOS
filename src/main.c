@@ -6,6 +6,16 @@
 #include <string.h>
 #include "image.h"
 
+#define LOGO_WIDTH 960
+#define LOGO_HEIGHT 1017
+#define PIC1 0x20
+#define PIC2 0xA0
+#define PIC1_COMMAND PIC1
+#define PIC1_DATA (PIC1+1)
+#define PIC2_COMMAND PIC2
+#define PIC2_DATA (PIC2+1)
+#define IDT_SIZE 256
+
 typedef struct
 {
     uint8_t magic[2]; // 0x36 0x04 for PSF1
@@ -20,8 +30,24 @@ typedef struct
     uint32_t *data; // 0xAARRGGBB
 } Image;
 
-#define LOGO_WIDTH 960
-#define LOGO_HEIGHT 1017
+struct IDTEntry {
+    uint16_t offset_low;
+    uint16_t selector;
+    uint8_t ist;
+    uint8_t type_attr;
+    uint16_t offset_mid;
+    uint32_t offset_high;
+    uint32_t zero;
+} __attribute__((packed));
+
+struct IDTEntry idt[IDT_SIZE];
+
+struct IDTPtr {
+    uint16_t limit;
+    uint64_t base;
+} __attribute__((packed));
+
+struct IDTPtr idt_ptr;
 
 // from xxd -i
 unsigned char font_psf[] = {
@@ -761,6 +787,69 @@ void draw_image_fit_center(uint32_t *fb, uint64_t pitch, Image *img, uint32_t fb
         }
     }
 }
+
+void pic_remap() {
+    outb(PIC1_COMMAND, 0x11);
+    outb(PIC2_COMMAND, 0x11);
+
+    outb(PIC1_DATA, 0x20); // IRQ0–7 → INT 32–39
+    outb(PIC2_DATA, 0x28); // IRQ8–15 → INT 40–47
+
+    outb(PIC1_DATA, 0x04);
+    outb(PIC2_DATA, 0x02);
+
+    outb(PIC1_DATA, 0x01);
+    outb(PIC2_DATA, 0x01);
+
+    outb(PIC1_DATA, 0x0);
+    outb(PIC2_DATA, 0x0);
+}
+
+void idt_set_gate(int n, void *handler) {
+    uint64_t addr = (uint64_t)handler;
+
+    idt[n].offset_low = addr & 0xFFFF;
+    idt[n].selector = 0x08; // kernel code segment
+    idt[n].ist = 0;
+    idt[n].type_attr = 0x8E; // interrupt gate
+    idt[n].offset_mid = (addr >> 16) & 0xFFFF;
+    idt[n].offset_high = (addr >> 32) & 0xFFFFFFFF;
+    idt[n].zero = 0;
+}
+
+typedef struct {
+    uint64_t r15, r14, r13, r12, r11, r10, r9, r8;
+    uint64_t rbp, rdi, rsi, rdx, rcx, rbx, rax;
+    uint64_t int_no, err_code;
+    uint64_t rip, cs, rflags, rsp, ss;
+} regs_t;
+
+void irq_handler(regs_t *r) {
+    switch (r->int_no) {
+        case 32: // timer
+            // handle timer
+            break;
+        case 33: // keyboard
+            // handle keyboard
+            break;
+    }
+
+    // send EOI
+    if (r->int_no >= 40)
+        outb(0xA0, 0x20); // slave PIC
+
+    outb(0x20, 0x20); // master PIC
+}
+
+extern void irq0();
+extern void irq1();
+
+void irq_install() {
+    idt_set_gate(32, irq0);
+    idt_set_gate(33, irq1);
+}
+
+
 
 // Entry point
 void kmain(void)

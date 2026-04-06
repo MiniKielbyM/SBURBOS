@@ -4,17 +4,17 @@
 _start:
     # Disable interrupts
     cli
-    
+
     # Set up stack using absolute address
     mov $stack_top, %rsp
-    
+
     # Align stack to 16-byte boundary (required by System V ABI)
     and $-16, %rsp
     sub $8, %rsp  # Account for return address
-    
+
     # Call C entry point
     call kmain
-    
+
     # Should not return, but halt if it does
     cli
     hlt
