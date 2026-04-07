@@ -3,7 +3,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdarg.h>
-# include <stdlib.h>
+#include <stdlib.h>
 #include <limine.h>
 #include <string.h>
 #include "image.h"
@@ -884,17 +884,18 @@ void idt_init(void)
     __asm__ volatile("lidt %0" : : "m"(idtp));
 }
 
-void pit_init(uint32_t frequency_hz) {
-    uint16_t divisor = 1193180 / frequency_hz;  // PIT base clock is ~1.193 MHz
-    outb(0x43, 0x36);                // channel 0, lobyte/hibyte, square wave
-    outb(0x40, divisor & 0xFF);      // low byte
-    outb(0x40, (divisor >> 8) & 0xFF); // high byte
+void pit_init(uint32_t frequency_hz)
+{
+    uint16_t divisor = 1193180 / frequency_hz; // PIT base clock is ~1.193 MHz
+    outb(0x43, 0x36);                          // channel 0, lobyte/hibyte, square wave
+    outb(0x40, divisor & 0xFF);                // low byte
+    outb(0x40, (divisor >> 8) & 0xFF);         // high byte
 }
 
 static inline uint64_t rdtsc()
 {
     uint32_t lo, hi;
-    __asm__ volatile ("rdtsc" : "=a"(lo), "=d"(hi));
+    __asm__ volatile("rdtsc" : "=a"(lo), "=d"(hi));
     return ((uint64_t)hi << 32) | lo;
 }
 
@@ -947,7 +948,6 @@ void kmain(void)
     serial_init();
     println("[SBURBOS] serial initialized");
     serial_write("[SBURBOS] kernel entered _start()\n");
-
     if (!LIMINE_BASE_REVISION_SUPPORTED(limine_base_revision))
     {
         serial_write("[SBURBOS] Limine base revision not supported\n");
@@ -969,7 +969,6 @@ void kmain(void)
         .width = LOGO_WIDTH,
         .height = LOGO_HEIGHT,
         .data = (uint32_t *)output_rgba};
-
     draw_image_fit_center(framebuffer, pitch, &img, fb->width, fb->height, 50);
     pic_remap();
     println("[SBURBOS] PIC remapped");
