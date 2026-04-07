@@ -2,6 +2,8 @@
 #include <stddef.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <stdarg.h>
+# include <stdlib.h>
 #include <limine.h>
 #include <string.h>
 #include "image.h"
@@ -9,6 +11,8 @@
 #define LOGO_WIDTH 960
 #define LOGO_HEIGHT 1017
 #define IDT_ENTRIES 256
+#define PIT_FREQ 1193182
+#define SBURBOS_VERSION "DEV-0.0.0"
 
 typedef struct
 {
@@ -880,20 +884,76 @@ void idt_init(void)
     __asm__ volatile("lidt %0" : : "m"(idtp));
 }
 
+void pit_init(uint32_t frequency_hz) {
+    uint16_t divisor = 1193180 / frequency_hz;  // PIT base clock is ~1.193 MHz
+    outb(0x43, 0x36);                // channel 0, lobyte/hibyte, square wave
+    outb(0x40, divisor & 0xFF);      // low byte
+    outb(0x40, (divisor >> 8) & 0xFF); // high byte
+}
+
+static inline uint64_t rdtsc()
+{
+    uint32_t lo, hi;
+    __asm__ volatile ("rdtsc" : "=a"(lo), "=d"(hi));
+    return ((uint64_t)hi << 32) | lo;
+}
+
+uint64_t get_cpu_hz()
+{
+    uint16_t divisor = 0xFFFF; // max interval (~54.9 ms)
+
+    // Set PIT channel 0: mode 0 (one-shot), lobyte/hibyte
+    outb(0x43, 0x30);
+    outb(0x40, divisor & 0xFF);
+    outb(0x40, divisor >> 8);
+
+    uint64_t start = rdtsc();
+
+    // Wait until PIT reaches zero
+    // Poll using latch command
+    while (1)
+    {
+        outb(0x43, 0x00); // latch count
+        uint8_t lo = inb(0x40);
+        uint8_t hi = inb(0x40);
+        uint16_t count = (hi << 8) | lo;
+
+        if (count == 0)
+            break;
+    }
+
+    uint64_t end = rdtsc();
+
+    uint64_t tsc_delta = end - start;
+
+    // Time elapsed = divisor / PIT_FREQ seconds
+    // CPU Hz = tsc_delta / time
+    return (tsc_delta * PIT_FREQ) / divisor;
+}
+
+void sleep(uint64_t ms)
+{
+    uint64_t start = rdtsc();
+    uint64_t target = (get_cpu_hz() * ms) / 1000;
+    while (rdtsc() - start < target)
+        ;
+}
+
 // Entry point
 void kmain(void)
 {
-    bool show_animation = true;
+    println(("[SBURBOS] booting SBURBOS version " SBURBOS_VERSION));
+    println("[SBURBOS] kernel entered kmain()");
     serial_init();
+    println("[SBURBOS] serial initialized");
     serial_write("[SBURBOS] kernel entered _start()\n");
 
     if (!LIMINE_BASE_REVISION_SUPPORTED(limine_base_revision))
     {
-        serial_write("[SBURBOS] Limine base revision unsupported\n");
+        serial_write("[SBURBOS] Limine base revision not supported\n");
         hcf();
     }
-
-    serial_write("[SBURBOS] Limine base revision supported\n");
+    println("[SBURBOS] Limine base revision supported");
 
     if (framebuffer_request.response == NULL ||
         framebuffer_request.response->framebuffer_count < 1)
@@ -904,21 +964,28 @@ void kmain(void)
     struct limine_framebuffer *fb = framebuffer_request.response->framebuffers[0];
     uint32_t *framebuffer = fb->address;
     uint64_t pitch = fb->pitch;
-    serial_write("[SBURBOS] framebuffer received\n");
-
+    println("[SBURBOS] framebuffer received");
     Image img = {
         .width = LOGO_WIDTH,
         .height = LOGO_HEIGHT,
         .data = (uint32_t *)output_rgba};
 
     draw_image_fit_center(framebuffer, pitch, &img, fb->width, fb->height, 50);
-
     pic_remap();
+    println("[SBURBOS] PIC remapped");
     idt_init(); // set up IDT and load with lidt
+    println("[SBURBOS] IDT initialized");
+    pit_init(get_cpu_hz());
+    println("[SBURBOS] PIT initialized");
+    println("[SBURBOS] starting sleep test for 5000 ms...");
+    sleep(5000);
+    println("[SBURBOS] sleep test complete");
     __asm__ volatile("sti");
+    println("[SBURBOS] interrupts enabled, entering main loop");
     while (1)
     {
         __asm__ volatile("hlt");
     }
+    println("[SBURBOS] main loop exited, halting");
     hcf();
 }
