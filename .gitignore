@@ -18,3 +18,4 @@ coverage/
 *.iml
 *.sln
 /obj/
+limine

@@ -8,6 +8,7 @@
 
 #define LOGO_WIDTH 960
 #define LOGO_HEIGHT 1017
+#define IDT_ENTRIES 256
 
 typedef struct
 {
@@ -22,6 +23,32 @@ typedef struct
     uint32_t height;
     uint32_t *data; // 0xAARRGGBB
 } Image;
+
+// IDT entry structure
+struct idt_entry
+{
+    uint16_t offset_low;
+    uint16_t selector;
+    uint8_t ist;
+    uint8_t type_attr;
+    uint16_t offset_mid;
+    uint32_t offset_high;
+    uint32_t reserved;
+} __attribute__((packed));
+
+// IDT pointer structure
+struct idt_ptr
+{
+    uint16_t limit;
+    uint64_t base;
+} __attribute__((packed));
+
+static struct idt_entry idt[IDT_ENTRIES];
+static struct idt_ptr idtp;
+
+// external IRQ stubs (from irq_stubs.S)
+extern void irq0();
+extern void irq1();
 
 // from xxd -i
 unsigned char font_psf[] = {
@@ -762,25 +789,95 @@ void draw_image_fit_center(uint32_t *fb, uint64_t pitch, Image *img, uint32_t fb
     }
 }
 
-static void start_cpu_subroutine(void (*subroutine)(void), size_t stack_size)
+void pic_remap(void)
 {
-    // Allocate stack dynamically
-    uint8_t *stack = (uint8_t *)malloc(stack_size);
-    if (!stack)
-        return; // allocation failed
+    // ICW1: Start initialization sequence (cascade mode, ICW4 needed)
+    outb(0x20, 0x11); // master command port
+    outb(0xA0, 0x11); // slave command port
 
-    void *stack_top = stack + stack_size;
+    // ICW2: Set base interrupt vector
+    outb(0x21, 0x20); // master: IRQs 0-7  -> vectors 32-39
+    outb(0xA1, 0x28); // slave:  IRQs 8-15 -> vectors 40-47
 
-    asm volatile(
-        "mov %%rsp, %%rax\n" // save old stack in rax
-        "mov %0, %%rsp\n"    // switch to new stack
-        "call *%1\n"         // call subroutine
-        "mov %%rax, %%rsp\n" // restore old stack
-        :
-        : "r"(stack_top), "r"(subroutine)
-        : "rax", "memory");
+    // ICW3: Configure cascade (how master/slave are wired)
+    outb(0x21, 0x04); // master: slave is on IRQ 2
+    outb(0xA1, 0x02); // slave:  connected to master's IRQ 2
 
-    free(stack);
+    // ICW4: Set 8086 mode
+    outb(0x21, 0x01);
+    outb(0xA1, 0x01);
+
+    // Set interrupt masks (1 = masked/disabled, 0 = enabled)
+    outb(0x21, 0xFC); // master: enable IRQ 0 (timer) and IRQ 1 (keyboard)
+    outb(0xA1, 0xFF); // slave:  mask everything
+}
+
+void irq_handler(uint64_t *regs)
+{
+    // The IRQ number was pushed onto the stack by the assembly stub
+    // It's at a known offset in the saved register array
+    uint64_t irq_num = regs[7]; // depends on push order in irq_stubs.S
+
+    if (irq_num == 33)
+    { // IRQ 1 = keyboard (remapped to vector 33)
+        uint8_t sc = inb(0x60);
+        if (!(sc & 0x80))
+        {
+            char c = scancode_map[sc];
+            if (c == '\b')
+            {
+                delete_last_char();
+            }
+            else if (c == '\t')
+            {
+                print("    ");
+            }
+            else if (c != 0)
+            {
+                print((char[]){c, '\0'});
+            }
+        }
+    }
+
+    // Send End of Interrupt to PIC
+    if (irq_num >= 40)
+    {
+        outb(0xA0, 0x20); // EOI to slave PIC
+    }
+    outb(0x20, 0x20); // EOI to master PIC
+}
+
+// helper to set an IDT gate
+static void idt_set_gate(int n, void (*handler)())
+{
+    uint64_t addr = (uint64_t)handler;
+
+    idt[n].offset_low = addr & 0xFFFF;
+    idt[n].selector = 0x28; // Limine kernel code segment
+    idt[n].ist = 0;
+    idt[n].type_attr = 0x8E; // interrupt gate, present, ring 0
+    idt[n].offset_mid = (addr >> 16) & 0xFFFF;
+    idt[n].offset_high = (addr >> 32) & 0xFFFFFFFF;
+    idt[n].reserved = 0;
+}
+
+void idt_init(void)
+{
+    // zero entire IDT
+    for (int i = 0; i < IDT_ENTRIES; i++)
+    {
+        idt[i] = (struct idt_entry){0};
+    }
+
+    // IRQs (after PIC remap)
+    idt_set_gate(32, irq0); // timer
+    idt_set_gate(33, irq1); // keyboard
+
+    // load IDT
+    idtp.limit = sizeof(idt) - 1;
+    idtp.base = (uint64_t)&idt;
+
+    __asm__ volatile("lidt %0" : : "m"(idtp));
 }
 
 // Entry point
@@ -816,40 +913,12 @@ void kmain(void)
 
     draw_image_fit_center(framebuffer, pitch, &img, fb->width, fb->height, 50);
 
-    __asm__ volatile("cli");
+    pic_remap();
+    idt_init(); // set up IDT and load with lidt
+    __asm__ volatile("sti");
     while (1)
     {
-        if (keyboard_has_data())
-        {
-            uint8_t sc = keyboard_read();
-            if (!(sc & 0x80))
-            {
-                char c = scancode_map[sc];
-                if (c == '\b')
-                {
-                    delete_last_char();
-                }
-                else if (c == '\t')
-                {
-                    print("    ");
-                }
-
-                else
-                {
-                    if (c == 0)
-                    {
-                        println("");
-                        print((char[]){'[', '0' + (sc >> 4), '0' + (sc & 0xF), ']', '\0'});
-                    }
-                    else
-                    {
-                        print((char[]){c, '\0'});
-                    }
-                }
-            }
-        }
+        __asm__ volatile("hlt");
     }
-    serial_write("[SBURBOS] drew text, halting\n");
-
     hcf();
 }
