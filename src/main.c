@@ -47,6 +47,11 @@ struct idt_ptr
     uint64_t base;
 } __attribute__((packed));
 
+Image logo = {
+    .width = LOGO_WIDTH,
+    .height = LOGO_HEIGHT,
+    .data = (uint32_t *)output_rgba};
+
 static struct idt_entry idt[IDT_ENTRIES];
 static struct idt_ptr idtp;
 
@@ -770,29 +775,6 @@ void draw_image_fit(uint32_t *fb, uint64_t pitch, Image *img, uint32_t fb_width,
     }
 }
 
-void draw_image_fit_center(uint32_t *fb, uint64_t pitch, Image *img, uint32_t fb_width, uint32_t fb_height, uint32_t scale_percent)
-{
-    // compute scaled dimensions using integer math
-    uint32_t scaled_width = fb_width * scale_percent / 100;
-    uint32_t scaled_height = fb_height * scale_percent / 100;
-
-    // offsets to center the scaled image
-    int x_off = (fb_width - scaled_width) / 2;
-    int y_off = (fb_height - scaled_height) / 2;
-
-    for (uint32_t y = 0; y < scaled_height; y++)
-    {
-        uint32_t src_y = y * img->height / scaled_height;
-        uint32_t *row = (uint32_t *)((uint8_t *)fb + (y + y_off) * pitch);
-
-        for (uint32_t x = 0; x < scaled_width; x++)
-        {
-            uint32_t src_x = x * img->width / scaled_width;
-            row[x + x_off] = img->data[src_y * img->width + src_x];
-        }
-    }
-}
-
 void pic_remap(void)
 {
     // ICW1: Start initialization sequence (cascade mode, ICW4 needed)
@@ -940,6 +922,33 @@ void sleep(uint64_t ms)
         ;
 }
 
+void play_startup_animation(uint32_t *fb, uint64_t pitch, uint32_t fb_width, uint32_t fb_height, Image *img, int scale_percent)
+{
+    clear_screen();
+    // compute scaled dimensions using integer math
+    uint32_t scaled_width = fb_width * scale_percent / 100;
+    uint32_t scaled_height = fb_height * scale_percent / 100;
+
+    // offsets to center the scaled image
+    int x_off = (fb_width - scaled_width) / 2;
+    int y_off = (fb_height - scaled_height) / 2;
+
+    for (uint32_t y = 0; y < scaled_height; y++)
+    {
+        uint32_t src_y = y * img->height / scaled_height;
+        uint32_t *row = (uint32_t *)((uint8_t *)fb + (y + y_off) * pitch);
+
+        for (uint32_t x = 0; x < scaled_width; x++)
+        {
+            uint32_t src_x = x * img->width / scaled_width;
+            row[x + x_off] = img->data[src_y * img->width + src_x];
+        }
+        if(y%3 == 0)
+        {
+            sleep(10); // slow down animation for visibility
+        }
+    }
+}
 // Entry point
 void kmain(void)
 {
@@ -965,22 +974,20 @@ void kmain(void)
     uint32_t *framebuffer = fb->address;
     uint64_t pitch = fb->pitch;
     println("[SBURBOS] framebuffer received");
-    Image img = {
-        .width = LOGO_WIDTH,
-        .height = LOGO_HEIGHT,
-        .data = (uint32_t *)output_rgba};
-    draw_image_fit_center(framebuffer, pitch, &img, fb->width, fb->height, 50);
     pic_remap();
     println("[SBURBOS] PIC remapped");
     idt_init(); // set up IDT and load with lidt
     println("[SBURBOS] IDT initialized");
     pit_init(get_cpu_hz());
     println("[SBURBOS] PIT initialized");
-    println("[SBURBOS] starting sleep test for 5000 ms...");
-    sleep(5000);
+    println("[SBURBOS] starting sleep test for 1000 ms...");
+    sleep(1000);
     println("[SBURBOS] sleep test complete");
     __asm__ volatile("sti");
-    println("[SBURBOS] interrupts enabled, entering main loop");
+    println("[SBURBOS] interrupts enabled");
+    println("[SBURBOS] starting up...");
+    sleep(2000);
+    play_startup_animation(framebuffer, pitch, fb->width, fb->height, &logo, 50);
     while (1)
     {
         __asm__ volatile("hlt");
