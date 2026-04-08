@@ -475,7 +475,9 @@ uint8_t psf_get_height(void)
     return psf->charsize;
 }
 // global text position
-int x = 10, y = 10;
+int x = 10, y = 10, num_lines = 0;
+
+int line_lengths[1];
 
 // Limine base revision
 __attribute__((used, section(".limine_requests"))) static volatile uint64_t limine_base_revision[] = LIMINE_BASE_REVISION(3);
@@ -606,11 +608,11 @@ static void print(char string[])
         {
             x = 10;
             y += 16;
+            num_lines++;
             continue;
         }
-
         uint8_t *glyph = psf_get_glyph((uint8_t)string[i]);
-
+        line_lengths[num_lines] += 8;
         for (int row = 0; row < psf_get_height(); row++)
         {
             uint8_t byte = glyph[row];
@@ -643,11 +645,12 @@ static void println(char string[])
         {
             x = 10;
             y += 16;
+            num_lines++;
             continue;
         }
 
         uint8_t *glyph = psf_get_glyph((uint8_t)string[i]);
-
+        line_lengths[num_lines] += 8;
         for (int row = 0; row < psf_get_height(); row++)
         {
             uint8_t byte = glyph[row];
@@ -665,6 +668,7 @@ static void println(char string[])
     }
     y += 16;
     x = 10;
+    num_lines++;
 }
 
 static void delete_last_char()
@@ -672,11 +676,13 @@ static void delete_last_char()
     if (x > 10)
     {
         x -= 8;
+        line_lengths[num_lines] -= 8;
     }
     else if (y > 10)
     {
         y -= 16;
-        x = 10 + ((framebuffer_request.response->framebuffers[0]->width / 8) - 1) * 8;
+        x = 10 + line_lengths[num_lines - 1];
+        num_lines--;
     }
     else
     {
@@ -734,6 +740,10 @@ static void clear_screen()
     }
     y = 10;
     x = 10;
+    for (int i = 0; i <= num_lines; i++)
+    {
+        line_lengths[i] = 0;
+    }
 }
 
 void put_pixel(uint32_t *fb, uint64_t pitch, int x, int y, uint32_t color)
@@ -933,20 +943,16 @@ void play_startup_animation(uint32_t *fb, uint64_t pitch, uint32_t fb_width, uin
     int x_off = (fb_width - scaled_width) / 2;
     int y_off = (fb_height - scaled_height) / 2;
 
-    for (uint32_t y = 0; y < scaled_height; y++)
+    for (uint32_t y = 0; y < scaled_height; y += 1)
     {
         uint32_t src_y = y * img->height / scaled_height;
         uint32_t *row = (uint32_t *)((uint8_t *)fb + (y + y_off) * pitch);
-
-        for (uint32_t x = 0; x < scaled_width; x++)
+        for (uint32_t x = 0; x < scaled_width; x += 1)
         {
             uint32_t src_x = x * img->width / scaled_width;
             row[x + x_off] = img->data[src_y * img->width + src_x];
         }
-        if(y%3 == 0)
-        {
-            sleep(10); // slow down animation for visibility
-        }
+        sleep(0.1f); // small delay for animation
     }
 }
 // Entry point
