@@ -956,7 +956,6 @@ void kmain(void)
     println("[SBURBOS] kernel entered kmain()");
     serial_init();
     println("[SBURBOS] serial initialized");
-    serial_write("[SBURBOS] kernel entered _start()\n");
     if (!LIMINE_BASE_REVISION_SUPPORTED(limine_base_revision))
     {
         serial_write("[SBURBOS] Limine base revision not supported\n");
