@@ -475,6 +475,9 @@ uint8_t psf_get_height(void)
     return psf->charsize;
 }
 // global text position
+
+uint64_t cpu_hz;
+
 int x = 10, y = 10, num_lines = 0;
 
 int line_lengths[1];
@@ -713,16 +716,6 @@ uint8_t keyboard_read()
     return inb(0x60);
 }
 
-static void startup_animation()
-{
-    struct limine_framebuffer *framebuffer =
-        framebuffer_request.response->framebuffers[0];
-
-    uint32_t *fb_ptr = (uint32_t *)framebuffer->address;
-    uint32_t pitch = framebuffer->pitch / sizeof(uint32_t);
-    uint32_t white = 0xFFFFFFFF;
-}
-
 static void clear_screen()
 {
     struct limine_framebuffer *framebuffer =
@@ -927,9 +920,9 @@ uint64_t get_cpu_hz()
 void sleep(uint64_t ms)
 {
     uint64_t start = rdtsc();
-    uint64_t target = (get_cpu_hz() * ms) / 1000;
-    while (rdtsc() - start < target)
-        ;
+    uint64_t target = (cpu_hz * ms) / 1000;
+
+    while (rdtsc() - start < target);
 }
 
 void play_startup_animation(uint32_t *fb, uint64_t pitch, uint32_t fb_width, uint32_t fb_height, Image *img, int scale_percent)
@@ -952,7 +945,7 @@ void play_startup_animation(uint32_t *fb, uint64_t pitch, uint32_t fb_width, uin
             uint32_t src_x = x * img->width / scaled_width;
             row[x + x_off] = img->data[src_y * img->width + src_x];
         }
-        sleep(0.1f); // small delay for animation
+        sleep(10); // small delay for animation
     }
 }
 // Entry point
@@ -983,7 +976,8 @@ void kmain(void)
     println("[SBURBOS] PIC remapped");
     idt_init(); // set up IDT and load with lidt
     println("[SBURBOS] IDT initialized");
-    pit_init(get_cpu_hz());
+    cpu_hz = get_cpu_hz();
+    pit_init(1000); // restore periodic PIT AFTER measurement
     println("[SBURBOS] PIT initialized");
     println("[SBURBOS] starting sleep test for 1000 ms...");
     sleep(1000);
