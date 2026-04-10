@@ -173,27 +173,56 @@ bin/$(OUTPUT).iso: bin/$(OUTPUT) $(LIMINE_TOOL)
 .PHONY: run
 run: bin/$(OUTPUT).iso
 	@if [ -n "$$DISPLAY" ] || [ -n "$$WAYLAND_DISPLAY" ]; then \
-	    qemu-system-x86_64 -boot order=d -cdrom bin/$(OUTPUT).iso -m 512M -bios /usr/share/ovmf/OVMF.fd; \
+	    qemu-system-x86_64 \
+	        -boot order=d \
+	        -cdrom bin/$(OUTPUT).iso \
+	        -m 512M \
+	        -bios /usr/share/ovmf/OVMF.fd \
+	        -rtc base=localtime,clock=host; \
 	else \
 	    echo "No GUI display detected; using headless mode (serial in terminal)."; \
-	    qemu-system-x86_64 -boot order=d -cdrom bin/$(OUTPUT).iso -m 512M -bios /usr/share/ovmf/OVMF.fd -display none -serial stdio -monitor none; \
+	    qemu-system-x86_64 \
+	        -boot order=d \
+	        -cdrom bin/$(OUTPUT).iso \
+	        -m 512M \
+	        -bios /usr/share/ovmf/OVMF.fd \
+	        -rtc base=localtime,clock=host \
+	        -display none -serial stdio -monitor none; \
 	fi
 
 # Run the OS in QEMU in terminal/headless mode.
 .PHONY: run-headless
 run-headless: bin/$(OUTPUT).iso
-	qemu-system-x86_64 -boot order=d -cdrom bin/$(OUTPUT).iso -m 512M -bios /usr/share/ovmf/OVMF.fd -display none -serial stdio -monitor none
+	qemu-system-x86_64 \
+	    -boot order=d \
+	    -cdrom bin/$(OUTPUT).iso \
+	    -m 512M \
+	    -bios /usr/share/ovmf/OVMF.fd \
+	    -rtc base=localtime,clock=host \
+	    -display none -serial stdio -monitor none
 
 # Run the OS in QEMU with KVM acceleration.
 .PHONY: run-kvm
 run-kvm: bin/$(OUTPUT).iso
 	@if [ -n "$$DISPLAY" ] || [ -n "$$WAYLAND_DISPLAY" ]; then \
-	    qemu-system-x86_64 -boot order=d -cdrom bin/$(OUTPUT).iso -m 512M -bios /usr/share/ovmf/OVMF.fd -enable-kvm -cpu host; \
+	    qemu-system-x86_64 \
+	        -boot order=d \
+	        -cdrom bin/$(OUTPUT).iso \
+	        -m 512M \
+	        -bios /usr/share/ovmf/OVMF.fd \
+	        -enable-kvm -cpu host \
+	        -rtc base=localtime,clock=host; \
 	else \
 	    echo "No GUI display detected; using headless mode (serial in terminal)."; \
-	    qemu-system-x86_64 -boot order=d -cdrom bin/$(OUTPUT).iso -m 512M -bios /usr/share/ovmf/OVMF.fd -enable-kvm -cpu host -display none -serial stdio -monitor none; \
+	    qemu-system-x86_64 \
+	        -boot order=d \
+	        -cdrom bin/$(OUTPUT).iso \
+	        -m 512M \
+	        -bios /usr/share/ovmf/OVMF.fd \
+	        -enable-kvm -cpu host \
+	        -rtc base=localtime,clock=host \
+	        -display none -serial stdio -monitor none; \
 	fi
-
 # Phony target for image creation.
 .PHONY: image
 image: bin/$(OUTPUT).iso
