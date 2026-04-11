@@ -1,0 +1,17 @@
+#include <stdint.h>
+#include <stddef.h>
+#include <stdbool.h>
+#include <stdio.h>
+#include <stdarg.h>
+#include <stdlib.h>
+#include <limine.h>
+#include <string.h>
+#include "image.h"
+#include "SBURB_libs/.h/SBURB_strlib.h"
+#include "SBURB_libs/.h/SBURB_portlib.h"
+#include "SBURB_libs/.h/SBURB_interruptlib.h"
+#include "SBURB_libs/.h/SBURB_timelib.h"
+#include "SBURB_libs/.h/SBURB_fontlib.h"
+#include "SBURB_libs/.h/SBURB_framebufferlib.h"
+#include "SBURB_libs/.h/SBURB_memlib.h"
+#include "SBURB_libs/.h/SBURB_seriallib.h"
