@@ -19,13 +19,13 @@ void serial_write_char(char c)
     outb(0x3F8, (uint8_t)c);
 }
 
-void serial_write(const char *s)
+void serial_write(const char *str)
 {
-    while (*s)
+    while (*str)
     {
-        if (*s == '\n')
+        if (*str == '\n')
             serial_write_char('\r');
-        serial_write_char(*s++);
+        serial_write_char(*str++);
     }
 }
 

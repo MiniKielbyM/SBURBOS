@@ -2,6 +2,7 @@
 #define SBURB_FRAMEBUFFERLIB_H
 
 #include "limine.h"
+#include "SBURB_globals.h"
 
 extern volatile struct limine_framebuffer_request framebuffer_request;
 extern volatile uint64_t limine_base_revision[];

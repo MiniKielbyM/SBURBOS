@@ -15,3 +15,5 @@
 #include "SBURB_libs/.h/SBURB_framebufferlib.h"
 #include "SBURB_libs/.h/SBURB_memlib.h"
 #include "SBURB_libs/.h/SBURB_seriallib.h"
+#include "SBURB_libs/.h/SBURB_globals.h"
+#include "SBURB_libs/.h/SBURB_imagelib.h"

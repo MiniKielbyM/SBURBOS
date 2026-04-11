@@ -7,11 +7,6 @@ char scancode_map[128] = {
     0, '\\', 'z', 'x', 'c', 'v', 'b', 'n', 'm', ',', '.', '/',
     0, '*', 0, ' '};
 
-
-int x = 10, y = 10, num_lines = 0;
-
-int line_lengths[1024];
-
 PSF1_Header *psf = (PSF1_Header *)font_psf;
 uint8_t *glyphs = (uint8_t *)font_psf + sizeof(PSF1_Header);
 

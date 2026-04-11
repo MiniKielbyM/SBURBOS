@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include "SBURB_framebufferlib.h"
+#include "SBURB_globals.h"
 
 typedef struct
 {
@@ -13,8 +14,6 @@ typedef struct
 
 extern unsigned char font_psf[];
 extern unsigned int Cyr_a8x14_psf_len;
-extern int x, y, num_lines;
-extern int line_lengths[1024];
 extern PSF1_Header *psf;
 extern uint8_t *glyphs;
 extern unsigned int Cyr_a8x14_psf_len;
