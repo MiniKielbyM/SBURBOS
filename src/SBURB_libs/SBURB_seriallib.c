@@ -1,6 +1,6 @@
 #include ".h/SBURB_seriallib.h"
 // Serial
-static void serial_init(void)
+void serial_init(void)
 {
     outb(0x3F8 + 1, 0x00);
     outb(0x3F8 + 3, 0x80);
@@ -11,7 +11,7 @@ static void serial_init(void)
     outb(0x3F8 + 4, 0x0B);
 }
 
-static void serial_write_char(char c)
+void serial_write_char(char c)
 {
     while ((inb(0x3F8 + 5) & 0x20) == 0)
     {
@@ -19,7 +19,7 @@ static void serial_write_char(char c)
     outb(0x3F8, (uint8_t)c);
 }
 
-static void serial_write(const char *s)
+void serial_write(const char *s)
 {
     while (*s)
     {
@@ -29,7 +29,7 @@ static void serial_write(const char *s)
     }
 }
 
-static void hcf(void)
+void hcf(void)
 {
     for (;;)
         asm("hlt");
