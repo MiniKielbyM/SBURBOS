@@ -8,7 +8,6 @@ Image logo = {
     .height = LOGO_HEIGHT,
     .data = (uint32_t *)output_rgba};
 
-
 void play_startup_animation(uint32_t *fb, uint64_t pitch, uint32_t fb_width, uint32_t fb_height, Image *img, int scale_percent)
 {
     clear_screen();
@@ -30,6 +29,28 @@ void play_startup_animation(uint32_t *fb, uint64_t pitch, uint32_t fb_width, uin
             row[x + x_off] = img->data[src_y * img->width + src_x];
         }
         sleep(10); // small delay for animation
+    }
+}
+
+void draw_taskbar()
+{
+    struct limine_framebuffer *framebuffer =
+        framebuffer_request.response->framebuffers[0];
+    uint32_t *fb_ptr = (uint32_t *)framebuffer->address;
+    uint32_t pitch = framebuffer->pitch / sizeof(uint32_t);
+    for (uint32_t y = framebuffer->height - 47; y < framebuffer->height - 45; y++)
+    {
+        for (uint32_t x = 0; x < framebuffer->width; x++)
+        {
+            fb_ptr[y * pitch + x] = 0xFFFFFFFF; // solid gray taskbar
+        }
+    }
+    for (uint32_t y = framebuffer->height - 45; y < framebuffer->height; y++)
+    {
+        for (uint32_t x = 0; x < framebuffer->width; x++)
+        {
+            fb_ptr[y * pitch + x] = 0xFFA1A1A1; // solid gray taskbar
+        }
     }
 }
 
@@ -74,21 +95,7 @@ void kmain(void)
     __asm__ volatile("cli");
     play_startup_animation(framebuffer, pitch, fb->width, fb->height, &logo, 50);
     __asm__ volatile("sti");
-    rtc_read(&current_time);
-    println("[SBURBOS] current time read from RTC:");
-    char year_str[12];
-    char month_str[12];
-    char day_str[12];
-    char hour_str[12];
-    char minute_str[12];
-    char second_str[12];
-    char buf[64];
-    println(concat(buf, "Year: ", itoa(current_time.year, year_str, 10)));
-    println(concat(buf, "Month: ", itoa(current_time.month, month_str, 10)));
-    println(concat(buf, "Day: ", itoa(current_time.day, day_str, 10)));
-    println(concat(buf, "Hour: ", itoa(current_time.hour, hour_str, 10)));
-    println(concat(buf, "Minute: ", itoa(current_time.minute, minute_str, 10)));
-    println(concat(buf, "Second: ", itoa(current_time.second, second_str, 10)));
+    draw_taskbar();
     while (1)
     {
         __asm__ volatile("hlt");

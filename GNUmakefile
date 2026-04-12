@@ -177,7 +177,7 @@ run: bin/$(OUTPUT).iso
 	        -boot order=d \
 	        -cdrom bin/$(OUTPUT).iso \
 	        -m 512M \
-	        -bios /usr/share/ovmf/OVMF.fd \
+			-bios /usr/share/ovmf/OVMF.fd \
 	        -rtc base=localtime,clock=host; \
 	else \
 	    echo "No GUI display detected; using headless mode (serial in terminal)."; \

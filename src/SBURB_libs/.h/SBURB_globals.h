@@ -7,7 +7,6 @@
 //predefs
 extern int x, y, num_lines;
 extern int line_lengths[1024];
-
-//non-predefs
+extern int mouse_x, mouse_y;
 
 #endif

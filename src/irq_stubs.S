@@ -2,6 +2,7 @@
 
 .global irq0
 .global irq1
+.global irq12
 
 irq0:
     pushq $0
@@ -11,6 +12,11 @@ irq0:
 irq1:
     pushq $0
     pushq $33
+    jmp irq_common_stub
+
+irq12:
+    pushq $0
+    pushq $44
     jmp irq_common_stub
 
 .global irq_common_stub

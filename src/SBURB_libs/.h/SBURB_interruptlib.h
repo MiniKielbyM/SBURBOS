@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include "SBURB_timelib.h"
 #include "SBURB_fontlib.h"
+#include "SBURB_mouselib.h"
 
 #define IDT_ENTRIES 256
 
@@ -31,6 +32,7 @@ extern struct idt_ptr idtp;
 
 extern void irq0();
 extern void irq1();
+extern void irq12();
 
 void idt_init(void);
 

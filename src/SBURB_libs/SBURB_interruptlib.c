@@ -28,6 +28,7 @@ void idt_init(void)
     // IRQs (after PIC remap)
     idt_set_gate(32, irq0); // timer
     idt_set_gate(33, irq1); // keyboard
+    idt_set_gate(44, irq12); // mouse
 
     // load IDT
     idtp.limit = sizeof(idt) - 1;
