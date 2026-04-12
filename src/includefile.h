@@ -17,3 +17,4 @@
 #include "SBURB_libs/.h/SBURB_seriallib.h"
 #include "SBURB_libs/.h/SBURB_globals.h"
 #include "SBURB_libs/.h/SBURB_imagelib.h"
+#include "SBURB_libs/.h/SBURB_mouselib.h"

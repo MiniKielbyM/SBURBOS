@@ -5,6 +5,9 @@
 #include "SBURB_timelib.h"
 #include "SBURB_fontlib.h"
 #include "SBURB_mouselib.h"
+#include "SBURB_portlib.h"
+#include "SBURB_globals.h"
+#include "SBURB_strlib.h"
 
 #define IDT_ENTRIES 256
 

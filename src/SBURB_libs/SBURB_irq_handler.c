@@ -3,7 +3,9 @@
 void irq_handler(uint64_t *regs)
 {
     uint64_t irq_num = regs[7];
-
+    if(irq_num != 32){
+        println(concat((char[32]){0}, "IRQ ", concat((char[32]){0}, itoa(irq_num, (char[32]){0}, 10), " received")));
+    }
     if (irq_num == 33)
     {
         uint8_t sc = inb(0x60); // always read it
