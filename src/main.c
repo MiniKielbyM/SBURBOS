@@ -81,6 +81,7 @@ void kmain(void)
     pic_remap();
     println("[SBURBOS] PIC remapped");
     idt_init(); // set up IDT and load with lidt
+    mouse_init();
     println("[SBURBOS] IDT initialized");
     cpu_hz = get_cpu_hz();
     pit_init(1000); // restore periodic PIT AFTER measurement
@@ -90,8 +91,11 @@ void kmain(void)
     println("[SBURBOS] sleep test complete");
     __asm__ volatile("sti");
     println("[SBURBOS] interrupts enabled");
+    mouse_init();
+    println("[SBURBOS] mouse initialized");
     println("[SBURBOS] starting up...");
     sleep(2000);
+
     __asm__ volatile("cli");
     play_startup_animation(framebuffer, pitch, fb->width, fb->height, &logo, 50);
     __asm__ volatile("sti");

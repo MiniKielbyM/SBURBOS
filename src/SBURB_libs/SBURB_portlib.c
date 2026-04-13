@@ -33,6 +33,6 @@ void pic_remap(void)
     outb(0xA1, 0x01);
 
     // Set interrupt masks (1 = masked/disabled, 0 = enabled)
-    outb(0x21, 0xFC); // master: enable IRQ 0 (timer) and IRQ 1 (keyboard)
-    outb(0xA1, 0xFF); // slave:  mask everything
+    outb(0x21, 0xFB); //enable irq0, 1, 2
+    outb(0xA1, 0xEF); //enable irq 12
 }
