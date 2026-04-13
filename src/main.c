@@ -32,25 +32,34 @@ void play_startup_animation(uint32_t *fb, uint64_t pitch, uint32_t fb_width, uin
     }
 }
 
-void draw_taskbar()
+void draw_taskbar(uint32_t color)
 {
     struct limine_framebuffer *framebuffer =
         framebuffer_request.response->framebuffers[0];
     uint32_t *fb_ptr = (uint32_t *)framebuffer->address;
     uint32_t pitch = framebuffer->pitch / sizeof(uint32_t);
-    for (uint32_t y = framebuffer->height - 47; y < framebuffer->height - 45; y++)
+
+    for (uint32_t y = framebuffer->height - 55; y < framebuffer->height; y++)
     {
         for (uint32_t x = 0; x < framebuffer->width; x++)
         {
-            fb_ptr[y * pitch + x] = 0xFFFFFFFF; // solid gray taskbar
+            fb_ptr[y * pitch + x] = color;
         }
-    }
-    for (uint32_t y = framebuffer->height - 45; y < framebuffer->height; y++)
-    {
-        for (uint32_t x = 0; x < framebuffer->width; x++)
-        {
-            fb_ptr[y * pitch + x] = 0xFFA1A1A1; // solid gray taskbar
-        }
+        // Preserve alpha (if present)
+        uint32_t a = color & 0xFF000000;
+
+        // Extract RGB
+        uint32_t r = (color >> 16) & 0xFF;
+        uint32_t g = (color >> 8) & 0xFF;
+        uint32_t b = color & 0xFF;
+
+        // Darken by 1 step
+        r = (r * 250) / 255;
+        g = (g * 250) / 255;
+        b = (b * 250) / 255;
+
+        // Recombine
+        color = a | (r << 16) | (g << 8) | b;
     }
 }
 
@@ -99,7 +108,7 @@ void kmain(void)
     __asm__ volatile("cli");
     play_startup_animation(framebuffer, pitch, fb->width, fb->height, &logo, 50);
     __asm__ volatile("sti");
-    draw_taskbar();
+    draw_taskbar(0xFF00FF00);
     while (1)
     {
         __asm__ volatile("hlt");
