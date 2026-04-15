@@ -39,7 +39,7 @@ void draw_taskbar(uint32_t color)
     uint32_t *fb_ptr = (uint32_t *)framebuffer->address;
     uint32_t pitch = framebuffer->pitch / sizeof(uint32_t);
 
-    for (uint32_t y = framebuffer->height - 55; y < framebuffer->height; y++)
+    for (uint32_t y = framebuffer->height - 75; y < framebuffer->height; y++)
     {
         for (uint32_t x = 0; x < framebuffer->width; x++)
         {
@@ -108,7 +108,7 @@ void kmain(void)
     __asm__ volatile("cli");
     play_startup_animation(framebuffer, pitch, fb->width, fb->height, &logo, 50);
     __asm__ volatile("sti");
-    draw_taskbar(0xFF00FF00);
+    draw_taskbar(0xFFFF0000);
     while (1)
     {
         __asm__ volatile("hlt");
